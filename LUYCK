@@ -1,0 +1,180 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- create ScreenGui (PlayerGui then fallback CoreGui)
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoBuyGUI"
+gui.ResetOnSpawn = false
+
+local ok, err = pcall(function()
+	gui.Parent = player:WaitForChild("PlayerGui")
+end)
+if not ok or not gui.Parent then
+	gui.Parent = game:GetService("CoreGui")
+end
+
+---------------------------------------------------------
+-- MAIN FRAME (SMALL + MOVABLE)
+---------------------------------------------------------
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 230, 0, 170)
+frame.Position = UDim2.new(0.5, -115, 0.5, -85)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0, 12)
+
+---------------------------------------------------------
+-- TITLE
+---------------------------------------------------------
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.Position = UDim2.new(0, 0, 0, 6)
+title.BackgroundTransparency = 1
+title.Text = "STEAL A BRAINROT\n99X LUCK SCRIPT "
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 15
+title.Font = Enum.Font.GothamBold
+title.TextWrapped = true
+title.Parent = frame
+title.Active = true
+title.Selectable = false
+
+---------------------------------------------------------
+-- BUTTON
+---------------------------------------------------------
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.9, 0, 0, 35)
+button.Position = UDim2.new(0.05, 0, 0.45, 0)
+button.Text = "Start the script"
+button.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+button.TextColor3 = Color3.fromRGB(0, 0, 0)
+button.TextSize = 16
+button.Font = Enum.Font.GothamBold
+button.Parent = frame
+Instance.new("UICorner", button).CornerRadius = UDim.new(0,8)
+
+---------------------------------------------------------
+-- LOADING BAR
+---------------------------------------------------------
+local loadingBar = Instance.new("Frame")
+loadingBar.Size = UDim2.new(0.9, 0, 0, 8)
+loadingBar.Position = UDim2.new(0.05, 0, 0.70, 0)
+loadingBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+loadingBar.Visible = false
+loadingBar.Parent = frame
+Instance.new("UICorner", loadingBar).CornerRadius = UDim.new(0,6)
+
+local fill = Instance.new("Frame", loadingBar)
+fill.Size = UDim2.new(0, 0, 1, 0)
+fill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Instance.new("UICorner", fill).CornerRadius = UDim.new(0,6)
+
+local gradient = Instance.new("UIGradient", fill)
+gradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,255))
+}
+
+---------------------------------------------------------
+-- AUTO BLOCK STATUS (UNDER LOADING BAR)
+---------------------------------------------------------
+local autoblockStatus = Instance.new("TextLabel")
+autoblockStatus.Size = UDim2.new(1, 0, 0, 20)
+autoblockStatus.Position = UDim2.new(0, 0, 0.83, 0) -- placed under bar
+autoblockStatus.BackgroundTransparency = 1
+autoblockStatus.Text = ""
+autoblockStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
+autoblockStatus.TextScaled = true
+autoblockStatus.Font = Enum.Font.GothamBold
+autoblockStatus.Parent = frame
+
+local antiCooldownStatus = Instance.new("TextLabel")
+antiCooldownStatus.Size = UDim2.new(1, 0, 0, 20)
+antiCooldownStatus.Position = UDim2.new(0, 0, 0.74, 0) -- higher
+antiCooldownStatus.BackgroundTransparency = 1
+antiCooldownStatus.Text = ""
+antiCooldownStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
+antiCooldownStatus.TextScaled = true
+antiCooldownStatus.Font = Enum.Font.GothamBold
+antiCooldownStatus.Parent = frame
+
+
+---------------------------------------------------------
+-- DRAG SYSTEM (Delta Safe)
+---------------------------------------------------------
+local dragging = false
+local dragOffset = Vector2.new(0,0)
+
+local function clampPosition(posX, posY)
+	local screenW, screenH = workspace.CurrentCamera.ViewportSize.X, workspace.CurrentCamera.ViewportSize.Y
+	local fw, fh = frame.AbsoluteSize.X, frame.AbsoluteSize.Y
+	posX = math.clamp(posX, 0, math.max(0, screenW - fw))
+	posY = math.clamp(posY, 0, math.max(0, screenH - fh))
+	return posX, posY
+end
+
+title.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = true
+		local mousePos = UserInputService:GetMouseLocation()
+		dragOffset = Vector2.new(mousePos.X - frame.AbsolutePosition.X,
+			mousePos.Y - frame.AbsolutePosition.Y)
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+title.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	if dragging then
+		local mousePos = UserInputService:GetMouseLocation()
+		local x = mousePos.X - dragOffset.X
+		local y = mousePos.Y - dragOffset.Y
+		x, y = clampPosition(x, y)
+		frame.Position = UDim2.new(0, x, 0, y)
+	end
+end)
+
+---------------------------------------------------------
+-- BUTTON ACTION
+---------------------------------------------------------
+local running = false
+button.MouseButton1Click:Connect(function()
+	if running then return end
+	running = true
+
+	button.Text = "99X LUCK IS LOADING..."
+	button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+
+	loadingBar.Visible = true
+	fill.Size = UDim2.new(0, 0, 1, 0)
+
+	for i = 1, 100 do
+		fill.Size = UDim2.new(i / 100, 0, 1, 0)
+		task.wait(0.80)
+	end
+
+	button.Text = "PLEASE WAIT THE SCRIPT!"
+	button.BackgroundColor3 = Color3.fromRGB(0, 200, 80)
+	button.Active = false
+	button.AutoButtonColor = false
+end)
